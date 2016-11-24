@@ -1,5 +1,40 @@
-from sys import argv
+from sys import argv, exit
 import argparse
+
+
+def split_string(string, *sizes):
+    """
+    Splits a string into specified sizes.
+
+    :param string: The string to split.
+    :param sizes: A list of sizes to split the string in.
+    :return: A tuple containing parts of the original string.
+    """
+
+    sizes = [float(size) for size in sizes]
+
+    if tuple(size for size in sizes if not size.is_integer()):
+        print('Error: Non-whole value entered; Parts must be positive whole numbers.')
+        exit(1)
+
+    if tuple(size for size in sizes if size <= 0):
+        print('Error: Non-positive value entered; Parts must be positive whole numbers.')
+        exit(1)
+
+    if sum(sizes) > len(string):
+        print('Error: Parts are larger than the whole.')
+        exit(1)
+    elif sum(sizes) < len(string):
+        sizes[-1] = len(string) - sum(sizes[:-1])
+
+    position = 0
+    parts = []
+    for size in sizes:
+        size = int(size)
+        parts.append(string[position:position+size])
+        position += size
+
+    return parts
 
 
 def parse_user_input(args=argv[1:]):
@@ -28,4 +63,4 @@ def parse_user_input(args=argv[1:]):
 
 
 if __name__ == '__main__':
-    print(parse_user_input())
+    print(split_string('20010203', *argv[1:]))
