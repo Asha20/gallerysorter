@@ -1,4 +1,5 @@
 from sys import argv, exit
+import os
 import argparse
 
 
@@ -10,7 +11,6 @@ def split_string(string, *sizes):
     :param sizes: A list of sizes to split the string in.
     :return: A tuple containing parts of the original string.
     """
-
     sizes = [float(size) for size in sizes]
 
     if tuple(size for size in sizes if not size.is_integer()):
@@ -37,6 +37,26 @@ def split_string(string, *sizes):
     return parts
 
 
+def file_has_wanted_extension(path, *extensions):
+    """
+    Identifies if a file has one of the defined extensions.
+
+    :param path: The path to test.
+    :param extensions: A list of extensions to check for. Defaults to JPG and MP4.
+    :return: True if path has wanted extension; False otherwise (or if path is a folder).
+    """
+    if os.path.isdir(path):
+        return False
+
+    if not extensions:
+        extensions = ('.jpg', '.mp4')
+
+    if os.path.splitext(path)[1].lower() in extensions:
+        return True
+    else:
+        return False
+
+
 def parse_user_input(args=argv[1:]):
     """
     Parses arguments provided by the user.
@@ -44,7 +64,6 @@ def parse_user_input(args=argv[1:]):
     :param args: Arguments to parse; defaults to command line arguments.
     :return: An argparse.Namespace object containing parsed arguments.
     """
-
     destination_help = 'Destination to move organized files in (defaults to source if not included).'
     recursive_help = 'Searches the whole source directory tree for files.'
     copy_help = 'Copies files into destination instead of moving them.'
