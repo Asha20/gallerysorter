@@ -1,9 +1,14 @@
 from functools import partial
+from contextlib import redirect_stdout
+from io import StringIO
 import unittest
 import os
 import shutil
 
 import picsort
+
+# Solved unittest dots and error messages printing together thanks to /u/treyhunner
+# https://www.reddit.com/r/learnpython/comments/5f0vko/disable_printing_in_unit_tests/dago5w7/
 
 
 class TestArgumentParsing(unittest.TestCase):
@@ -44,23 +49,32 @@ class TestStringSplitting(unittest.TestCase):
 
     def test_split_string_with_non_positive_point(self):
         """Fails if the program doesn't exit when a part value is less than or equal to 0."""
-        with self.assertRaises(SystemExit) as e:
-            self.split_string(3, -2, 4)
+        with redirect_stdout(StringIO()) as stdout:
+            with self.assertRaises(SystemExit) as e:
+                self.split_string(3, -2, 4)
 
+        expected_message = 'Error: Non-positive value entered; Parts must be positive whole numbers.\n'
+        self.assertEqual(stdout.getvalue(), expected_message)
         self.assertEqual(e.exception.code, 1)
 
     def test_split_string_with_non_whole_point(self):
         """Fails if the program doesn't exit when supplied with a non-whole number."""
-        with self.assertRaises(SystemExit) as e:
-            self.split_string(1.23, 2)
+        with redirect_stdout(StringIO()) as stdout:
+            with self.assertRaises(SystemExit) as e:
+                self.split_string(1.23, 2)
 
+        expected_message = 'Error: Non-whole value entered; Parts must be positive whole numbers.\n'
+        self.assertEqual(stdout.getvalue(), expected_message)
         self.assertEqual(e.exception.code, 1)
 
     def test_split_string_with_too_long_parts(self):
         """Fails if the program doesn't exit when splitting a string into too big parts."""
-        with self.assertRaises(SystemExit) as e:
-            self.split_string(20)
+        with redirect_stdout(StringIO()) as stdout:
+            with self.assertRaises(SystemExit) as e:
+                self.split_string(20)
 
+        expected_message = 'Error: Parts are larger than the whole.\n'
+        self.assertEqual(stdout.getvalue(), expected_message)
         self.assertEqual(e.exception.code, 1)
 
     def test_split_string_with_too_short_parts(self):
