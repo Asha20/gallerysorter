@@ -82,8 +82,30 @@ class TestStringSplitting(unittest.TestCase):
         self.assertEqual(self.split_string(4, 2), ['2001', '0203'])
 
 
-class TestFileSearch(unittest.TestCase):
-    """Tests for file searching."""
+def create_files(*files):
+    """
+    Creates files needed for testing.
+
+    :param files: A list or tuple of paths to create.
+    :return: None
+    """
+    try:
+        os.mkdir('tests/temp')
+    except FileExistsError:
+        pass
+
+    temp_path = os.path.join(os.getcwd(), 'tests', 'temp')
+    path_from_temp = partial(os.path.join, temp_path)
+
+    for file in files:
+        if os.path.dirname(file):
+            os.makedirs(path_from_temp(os.path.dirname(file)), exist_ok=True)
+        with open(path_from_temp(file), 'w'):
+            pass
+
+
+class TestFileChecking(unittest.TestCase):
+    """Tests for file checking."""
 
     def setUp(self):
         """Creates files to search through."""
@@ -92,25 +114,17 @@ class TestFileSearch(unittest.TestCase):
             'jpg_2.jpg',
             'mp4_1.mp4',
             'mp4_2.mp4',
-            'txt_1.txt',
+            'txt_1.txt'
         )
-
-        try:
-            os.mkdir('tests/temp')
-        except FileExistsError:
-            pass
+        create_files(*files)
 
         self.temp_path = os.path.join(os.getcwd(), 'tests', 'temp')
         self.path_from_temp = partial(os.path.join, self.temp_path)
 
-        for file in files:
-            with open(os.path.join(self.temp_path, file), 'w'):
-                pass
-
     def tearDown(self):
         """Deletes temporary files that were used for running tests."""
         if shutil.rmtree.avoids_symlink_attacks:
-            shutil.rmtree(os.path.join(os.getcwd(), 'tests', 'temp'))
+            shutil.rmtree(self.temp_path)
 
     def test_directory_extension_check(self):
         """Fails if False isn't returned when a directory is tested for a set extension."""
