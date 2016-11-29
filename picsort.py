@@ -1,4 +1,5 @@
 from sys import argv, exit
+import ntpath
 import os
 import argparse
 
@@ -11,6 +12,11 @@ def split_string(string, *sizes):
     :param sizes: A list of sizes to split the string in.
     :return: A tuple containing parts of the original string.
     """
+    # These default part lengths fit the YMD_HMS format;
+    # Refer to picsort.is_time_string docstring for details.
+    if not sizes:
+        sizes = (4, 2, 2, 1, 2, 2, 2)
+
     sizes = [float(size) for size in sizes]
 
     if tuple(size for size in sizes if not size.is_integer()):
@@ -55,6 +61,43 @@ def file_has_wanted_extension(path, *extensions):
         return True
     else:
         return False
+
+
+def is_time_string(path):
+    """
+    Checks if a given file has a time string name. A time string name
+    has the format YMD_HMS. Explanation below.
+
+    YMD_HMS:
+        Y - Year (4 digits)
+        M - Month (2 digits)
+        D - Day (2 digits)
+        _ - Single underscore
+        H - Hour (2 digits)
+        M - Minute (2 digits)
+        S - Second (2 digits)
+    Y, M, D, H, M and S are all valid integers.
+
+    Example: 20010203_102030.jpg - This JPG was created on the
+    3rd of February of 2001, at the time 10:20:30.
+
+
+    :param path: Path to test if it is a valid time string.
+    :return: True if path is a valid time string; False otherwise.
+    """
+    file_name = os.path.splitext(ntpath.basename(path))[0]
+    if len(file_name) != 15:
+        return False
+
+    parts = split_string(file_name)
+    try:
+        parts.remove('_')
+        for part in parts:
+            _ = int(part)
+    except ValueError:
+        return False
+
+    return True
 
 
 def parse_user_input(args=argv[1:]):

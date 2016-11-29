@@ -113,18 +113,35 @@ class TestFileSearch(unittest.TestCase):
             shutil.rmtree(os.path.join(os.getcwd(), 'tests', 'temp'))
 
     def test_directory_extension_check(self):
-        """Fails if True is returned when a directory is tested for a set extension."""
+        """Fails if False isn't returned when a directory is tested for a set extension."""
         self.assertFalse(picsort.file_has_wanted_extension(self.temp_path))
 
     def test_mp3_extension_check(self):
-        """Fails if False is returned when a JPG file is tested for a set extension."""
+        """Fails if True isn't returned when a JPG file is tested for a set extension."""
         file_path = self.path_from_temp('jpg_2.jpg')
         self.assertTrue(picsort.file_has_wanted_extension(file_path))
 
     def test_txt_extension_check(self):
-        """Fails if True is returned when a TXT file is tested for a set extension."""
+        """Fails if False isn't returned when a TXT file is tested for a set extension."""
         file_path = self.path_from_temp('txt_01.txt')
         self.assertFalse(picsort.file_has_wanted_extension(file_path))
+
+    def test_is_time_string_valid(self):
+        """Fails if True isn't returned when a valid string is checked to be a time string."""
+        self.assertTrue(picsort.is_time_string('20010203_010203.jpg'))
+
+    def test_is_time_string_random_string(self):
+        """Fails if False isn't returned when a non time string is checked."""
+        self.assertFalse(picsort.is_time_string('test.txt'))
+
+    def test_is_time_string_invalid_length(self):
+        """Fails if False isn't returned when a string with invalid length is passed in."""
+        self.assertFalse(picsort.is_time_string('20010203.jpg'))
+
+    def test_is_time_string_no_underscore(self):
+        """Fails if False isn't returned when a string is missing an underscore."""
+        self.assertFalse(picsort.is_time_string('20010203010203.jpg'))
+
 
 if __name__ == '__main__':
     unittest.main()
