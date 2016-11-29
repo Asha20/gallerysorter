@@ -100,8 +100,9 @@ def create_files(*files):
     for file in files:
         if os.path.dirname(file):
             os.makedirs(path_from_temp(os.path.dirname(file)), exist_ok=True)
-        with open(path_from_temp(file), 'w'):
-            pass
+        if not file.endswith('/'):
+            with open(path_from_temp(file), 'w'):
+                pass
 
 
 class TestFileChecking(unittest.TestCase):
@@ -155,6 +156,55 @@ class TestFileChecking(unittest.TestCase):
     def test_is_time_string_no_underscore(self):
         """Fails if False isn't returned when a string is missing an underscore."""
         self.assertFalse(picsort.is_time_string('20010203010203.jpg'))
+
+
+class TestFileSearching(unittest.TestCase):
+    """Tests for file searching."""
+
+    def setUp(self):
+        """Creates files to search through."""
+        files = (
+            'directory/',
+            'txt_1.txt',
+            'jpg_1.jpg',
+            '200102_03010203.jpg',
+            '20010203_010203.mp4',
+            '20010203_010203.txt'
+        )
+        create_files(*files)
+
+        self.temp_path = os.path.join(os.getcwd(), 'tests', 'temp')
+        self.path_from_temp = partial(os.path.join, self.temp_path)
+
+    def tearDown(self):
+        """Deletes temporary files that were used for running tests."""
+        if shutil.rmtree.avoids_symlink_attacks:
+            shutil.rmtree(self.temp_path)
+
+    def test_find_proper_file(self):
+        """Fails if a list containing only '20010203_010203.mp4' isn't returned."""
+        self.assertEqual(list(picsort.get_files(self.temp_path)),
+                         [self.path_from_temp('20010203_010203.mp4')])
+
+    def test_source_is_not_a_directory(self):
+        """Fails if the program doesn't exit when source isn't a directory."""
+        with redirect_stdout(StringIO()) as stdout:
+            with self.assertRaises(SystemExit) as e:
+                picsort.get_files(self.path_from_temp('txt_1.txt'))
+
+        expected_message = 'Error: Source must be a directory.\n'
+        self.assertEqual(stdout.getvalue(), expected_message)
+        self.assertEqual(e.exception.code, 1)
+
+    def test_source_does_not_exist(self):
+        """Fails if the program doesn't exit when source doesn't exist."""
+        with redirect_stdout(StringIO()) as stdout:
+            with self.assertRaises(SystemExit) as e:
+                picsort.get_files(self.path_from_temp('imaginary_directory/'))
+
+        expected_message = "Error: Source doesn't exist.\n"
+        self.assertEqual(stdout.getvalue(), expected_message)
+        self.assertEqual(e.exception.code, 1)
 
 
 if __name__ == '__main__':

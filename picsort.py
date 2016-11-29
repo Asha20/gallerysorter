@@ -100,6 +100,35 @@ def is_time_string(path):
     return True
 
 
+def get_files(directory, recursive=True, *extensions):
+    """
+    Finds files that have the valid time string format (YMD_HMS)
+    and that have one of the selected extensions.
+
+    :param directory: The directory to search for files in.
+    :param recursive: If True, will also search for files in subdirectories.
+    :param extensions: A list of allowed file extensions.
+    :return: A generator object containing files.
+    """
+    if not os.path.exists(directory):
+        print("Error: Source doesn't exist.")
+        exit(1)
+
+    if not os.path.isdir(directory):
+        print('Error: Source must be a directory.')
+        exit(1)
+
+    if recursive:
+        all_file_paths = (os.path.join(root, item) for root, dirs, files in os.walk(directory)
+                          for item in files)
+
+        return (file for file in all_file_paths if
+                file_has_wanted_extension(file, *extensions) and is_time_string(file))
+    else:
+        return (file for file in os.listdir(directory) if
+                file_has_wanted_extension(file, *extensions) and is_time_string(file))
+
+
 def parse_user_input(args=argv[1:]):
     """
     Parses arguments provided by the user.
@@ -125,4 +154,4 @@ def parse_user_input(args=argv[1:]):
 
 
 if __name__ == '__main__':
-    print(split_string('20010203', *argv[1:]))
+    print(list(get_files(os.path.join(os.getcwd(), 'tests', 'temp', 'txt_1.txt'))))
