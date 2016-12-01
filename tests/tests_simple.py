@@ -10,6 +10,9 @@ import picsort
 # Solved unittest dots and error messages printing together thanks to /u/treyhunner
 # https://www.reddit.com/r/learnpython/comments/5f0vko/disable_printing_in_unit_tests/dago5w7/
 
+TEMP_PATH = os.path.join(os.getcwd(), 'tests', 'temp')
+path_from_temp = partial(os.path.join, TEMP_PATH)
+
 
 class TestArgumentParsing(unittest.TestCase):
     """Tests for the picsort.parse_user_input function."""
@@ -94,9 +97,6 @@ def create_files(*files):
     except FileExistsError:
         pass
 
-    temp_path = os.path.join(os.getcwd(), 'tests', 'temp')
-    path_from_temp = partial(os.path.join, temp_path)
-
     for file in files:
         if os.path.dirname(file):
             os.makedirs(path_from_temp(os.path.dirname(file)), exist_ok=True)
@@ -119,26 +119,23 @@ class TestFileChecking(unittest.TestCase):
         )
         create_files(*files)
 
-        self.temp_path = os.path.join(os.getcwd(), 'tests', 'temp')
-        self.path_from_temp = partial(os.path.join, self.temp_path)
-
     def tearDown(self):
         """Deletes temporary files that were used for running tests."""
         if shutil.rmtree.avoids_symlink_attacks:
-            shutil.rmtree(self.temp_path)
+            shutil.rmtree(TEMP_PATH)
 
     def test_directory_extension_check(self):
         """Fails if False isn't returned when a directory is tested for a set extension."""
-        self.assertFalse(picsort.file_has_wanted_extension(self.temp_path))
+        self.assertFalse(picsort.file_has_wanted_extension(TEMP_PATH))
 
     def test_mp3_extension_check(self):
         """Fails if True isn't returned when a JPG file is tested for a set extension."""
-        file_path = self.path_from_temp('jpg_2.jpg')
+        file_path = path_from_temp('jpg_2.jpg')
         self.assertTrue(picsort.file_has_wanted_extension(file_path))
 
     def test_txt_extension_check(self):
         """Fails if False isn't returned when a TXT file is tested for a set extension."""
-        file_path = self.path_from_temp('txt_01.txt')
+        file_path = path_from_temp('txt_01.txt')
         self.assertFalse(picsort.file_has_wanted_extension(file_path))
 
     def test_is_time_string_valid(self):
@@ -173,24 +170,21 @@ class TestFileSearching(unittest.TestCase):
         )
         create_files(*files)
 
-        self.temp_path = os.path.join(os.getcwd(), 'tests', 'temp')
-        self.path_from_temp = partial(os.path.join, self.temp_path)
-
     def tearDown(self):
         """Deletes temporary files that were used for running tests."""
         if shutil.rmtree.avoids_symlink_attacks:
-            shutil.rmtree(self.temp_path)
+            shutil.rmtree(TEMP_PATH)
 
     def test_find_proper_file(self):
         """Fails if a list containing only '20010203_010203.mp4' isn't returned."""
-        self.assertEqual(list(picsort.get_files(self.temp_path)),
-                         [self.path_from_temp('20010203_010203.mp4')])
+        self.assertEqual(list(picsort.get_files(TEMP_PATH)),
+                         [path_from_temp('20010203_010203.mp4')])
 
     def test_source_is_not_a_directory(self):
         """Fails if the program doesn't exit when source isn't a directory."""
         with redirect_stdout(StringIO()) as stdout:
             with self.assertRaises(SystemExit) as e:
-                picsort.get_files(self.path_from_temp('txt_1.txt'))
+                picsort.get_files(path_from_temp('txt_1.txt'))
 
         expected_message = 'Error: Source must be a directory.\n'
         self.assertEqual(stdout.getvalue(), expected_message)
@@ -200,11 +194,54 @@ class TestFileSearching(unittest.TestCase):
         """Fails if the program doesn't exit when source doesn't exist."""
         with redirect_stdout(StringIO()) as stdout:
             with self.assertRaises(SystemExit) as e:
-                picsort.get_files(self.path_from_temp('imaginary_directory/'))
+                picsort.get_files(path_from_temp('imaginary_directory/'))
 
         expected_message = "Error: Source doesn't exist.\n"
         self.assertEqual(stdout.getvalue(), expected_message)
         self.assertEqual(e.exception.code, 1)
+
+
+class TestFileOrganizing(unittest.TestCase):
+    """Tests for organizing files into folders."""
+
+    def setUp(self):
+        """Creates files to organize."""
+        files = (
+            '20010203_010203.jpg',
+            '20010204_010203.jpg',
+            'subdirectory/20020201_010203.jpg'
+        )
+        self.create_files = partial(create_files, *files)
+
+    def tearDown(self):
+        """Deletes temporary files that were used for running tests."""
+        # if shutil.rmtree.avoids_symlink_attacks:
+        #     shutil.rmtree(TEMP_PATH)
+
+    def test_organize_files(self):
+        """Fails if files aren't organized into folders properly."""
+        self.create_files()
+        paths = picsort.organize_files(TEMP_PATH, picsort.get_files(TEMP_PATH, recursive=False))
+        expected = (
+            '2001/February 2001/20010203_010203.jpg',
+            '2001/February 2001/20010204_010203.jpg'
+        )
+
+        self.assertEqual(paths, tuple(os.path.join(TEMP_PATH, item) for item in expected))
+        self.addCleanup(shutil.rmtree, TEMP_PATH)
+
+    def test_organize_recursive(self):
+        """Fails if files within subdirectories aren't organized into folder properly."""
+        self.create_files()
+        paths = picsort.organize_files(TEMP_PATH, picsort.get_files(TEMP_PATH, recursive=True))
+        expected = (
+            '2001/February 2001/20010203_010203.jpg',
+            '2001/February 2001/20010204_010203.jpg',
+            '2002/February 2002/20020201_010203.jpg'
+        )
+
+        self.assertEqual(paths, tuple(os.path.join(TEMP_PATH, item) for item in expected))
+        self.addCleanup(shutil.rmtree, TEMP_PATH)
 
 
 if __name__ == '__main__':

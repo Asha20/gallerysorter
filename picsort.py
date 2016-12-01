@@ -12,6 +12,7 @@ def split_string(string, *sizes):
     :param sizes: A list of sizes to split the string in.
     :return: A tuple containing parts of the original string.
     """
+    string = ntpath.basename(string)
     # These default part lengths fit the YMD_HMS format;
     # Refer to picsort.is_time_string docstring for details.
     if not sizes:
@@ -125,8 +126,32 @@ def get_files(directory, recursive=True, *extensions):
         return (file for file in all_file_paths if
                 file_has_wanted_extension(file, *extensions) and is_time_string(file))
     else:
-        return (file for file in os.listdir(directory) if
+        return (os.path.join(directory, file) for file in os.listdir(directory) if
                 file_has_wanted_extension(file, *extensions) and is_time_string(file))
+
+
+def organize_files(source, files):
+    """
+    Organizes files into folders.
+
+    :param source: The source destination to sort files into.
+    :param files: An iterable of files to sort.
+    :return: A tuple of new sorted file paths.
+    """
+    month_names = ('January', 'February', 'March', 'April', 'May', 'June', 'July',
+                   'August', 'September', 'October', 'November', 'December')
+
+    result = []
+
+    for file in files:
+        year, month = split_string(file)[:2]
+        month_folder_name = '{month} {year}'.format(month=month_names[int(month) - 1], year=year)
+        new_file_path = os.path.join(source, year, month_folder_name, ntpath.basename(file))
+        os.makedirs(os.path.join(source, year, month_folder_name), exist_ok=True)
+        os.rename(file, new_file_path)
+        result.append(new_file_path)
+
+    return tuple(result)
 
 
 def parse_user_input(args=argv[1:]):
@@ -154,4 +179,5 @@ def parse_user_input(args=argv[1:]):
 
 
 if __name__ == '__main__':
-    print(list(get_files(os.path.join(os.getcwd(), 'tests', 'temp', 'txt_1.txt'))))
+    result = parse_user_input()
+    print(list(get_files(result.source, result.recursive)))
