@@ -14,77 +14,6 @@ TEMP_PATH = os.path.join(os.getcwd(), 'tests', 'temp')
 path_from_temp = partial(os.path.join, TEMP_PATH)
 
 
-class TestArgumentParsing(unittest.TestCase):
-    """Tests for the picsort.parse_user_input function."""
-
-    def parse_user_input(self, string_args):
-        """
-        Wrapper method for picsort.parse_user_input.
-        Accepts arguments as a string instead of a list for convenience.
-
-        :param string_args: A string of arguments.
-        :return: An argparse.Namespace object containing parsed arguments.
-        """
-
-        return picsort.parse_user_input(string_args.split())
-
-    def test_default_destination_is_source(self):
-        """Fails if the destination doesn't match the source by default."""
-        result = self.parse_user_input('source')
-        self.assertEqual(result.source, result.destination)
-
-    def test_destination_is_supplied(self):
-        """Fails if the destination defaults to source, even though another was provided."""
-        result = self.parse_user_input('source destination')
-        self.assertEqual(result.destination, 'destination')
-
-
-class TestStringSplitting(unittest.TestCase):
-    """Tests for the picsort.split_string function."""
-
-    def __init__(self, *args, **kwargs):
-        super(TestStringSplitting, self).__init__(*args, **kwargs)
-        self.split_string = partial(picsort.split_string, '20010203')
-
-    def test_split_string_valid(self):
-        """Fails if the string isn't split in the expected manner."""
-        self.assertEqual(self.split_string(4, 2, 2), ['2001', '02', '03'])
-
-    def test_split_string_with_non_positive_point(self):
-        """Fails if the program doesn't exit when a part value is less than or equal to 0."""
-        with redirect_stdout(StringIO()) as stdout:
-            with self.assertRaises(SystemExit) as e:
-                self.split_string(3, -2, 4)
-
-        expected_message = 'Error: Non-positive value entered; Parts must be positive whole numbers.\n'
-        self.assertEqual(stdout.getvalue(), expected_message)
-        self.assertEqual(e.exception.code, 1)
-
-    def test_split_string_with_non_whole_point(self):
-        """Fails if the program doesn't exit when supplied with a non-whole number."""
-        with redirect_stdout(StringIO()) as stdout:
-            with self.assertRaises(SystemExit) as e:
-                self.split_string(1.23, 2)
-
-        expected_message = 'Error: Non-whole value entered; Parts must be positive whole numbers.\n'
-        self.assertEqual(stdout.getvalue(), expected_message)
-        self.assertEqual(e.exception.code, 1)
-
-    def test_split_string_with_too_long_parts(self):
-        """Fails if the program doesn't exit when splitting a string into too big parts."""
-        with redirect_stdout(StringIO()) as stdout:
-            with self.assertRaises(SystemExit) as e:
-                self.split_string(20)
-
-        expected_message = 'Error: Parts are larger than the whole.\n'
-        self.assertEqual(stdout.getvalue(), expected_message)
-        self.assertEqual(e.exception.code, 1)
-
-    def test_split_string_with_too_short_parts(self):
-        """Fails if the program doesn't extend the last part to fit the string length."""
-        self.assertEqual(self.split_string(4, 2), ['2001', '0203'])
-
-
 def create_files(*files):
     """
     Creates files needed for testing.
@@ -103,6 +32,28 @@ def create_files(*files):
         if not file.endswith('/'):
             with open(path_from_temp(file), 'w'):
                 pass
+
+
+class TestArgumentParsing(unittest.TestCase):
+    """Tests for the picsort.parse_user_input function."""
+
+    def test_default_destination_is_source(self):
+        """Fails if the destination doesn't match the source by default."""
+        result = picsort.parse_user_input(['source'])
+        self.assertEqual(result.source, result.destination)
+
+    def test_destination_is_supplied(self):
+        """Fails if the destination defaults to source, even though another was provided."""
+        result = picsort.parse_user_input(['source', 'destination'])
+        self.assertEqual(result.destination, 'destination')
+
+
+class TestStringSplitting(unittest.TestCase):
+    """Tests for the picsort.split_string function."""
+
+    def test_split_string_valid(self):
+        """Fails if the string isn't split in the expected manner."""
+        self.assertEqual(picsort.TimeFileUtilities.split_name('20010203')[:3], ['2001', '02', '03'])
 
 
 class TestFileChecking(unittest.TestCase):
@@ -124,35 +75,21 @@ class TestFileChecking(unittest.TestCase):
         if shutil.rmtree.avoids_symlink_attacks:
             shutil.rmtree(TEMP_PATH)
 
-    def test_directory_extension_check(self):
-        """Fails if False isn't returned when a directory is tested for a set extension."""
-        self.assertFalse(picsort.file_has_wanted_extension(TEMP_PATH))
-
-    def test_mp3_extension_check(self):
-        """Fails if True isn't returned when a JPG file is tested for a set extension."""
-        file_path = path_from_temp('jpg_2.jpg')
-        self.assertTrue(picsort.file_has_wanted_extension(file_path))
-
-    def test_txt_extension_check(self):
-        """Fails if False isn't returned when a TXT file is tested for a set extension."""
-        file_path = path_from_temp('txt_01.txt')
-        self.assertFalse(picsort.file_has_wanted_extension(file_path))
-
     def test_is_time_string_valid(self):
         """Fails if True isn't returned when a valid string is checked to be a time string."""
-        self.assertTrue(picsort.is_time_string('20010203_010203.jpg'))
+        self.assertTrue(picsort.TimeFileUtilities.is_time_string('20010203_010203'))
 
     def test_is_time_string_random_string(self):
         """Fails if False isn't returned when a non time string is checked."""
-        self.assertFalse(picsort.is_time_string('test.txt'))
+        self.assertFalse(picsort.TimeFileUtilities.is_time_string('test.txt'))
 
     def test_is_time_string_invalid_length(self):
         """Fails if False isn't returned when a string with invalid length is passed in."""
-        self.assertFalse(picsort.is_time_string('20010203.jpg'))
+        self.assertFalse(picsort.TimeFileUtilities.is_time_string('20010203.jpg'))
 
     def test_is_time_string_no_underscore(self):
         """Fails if False isn't returned when a string is missing an underscore."""
-        self.assertFalse(picsort.is_time_string('20010203010203.jpg'))
+        self.assertFalse(picsort.TimeFileUtilities.is_time_string('20010203010203.jpg'))
 
 
 class TestFileSearching(unittest.TestCase):
@@ -177,8 +114,11 @@ class TestFileSearching(unittest.TestCase):
 
     def test_find_proper_file(self):
         """Fails if a list containing only '20010203_010203.mp4' isn't returned."""
-        self.assertEqual(list(picsort.get_files(TEMP_PATH)),
-                         [path_from_temp('20010203_010203.mp4')])
+        try:
+            self.assertEqual(picsort.get_files(TEMP_PATH),
+                             (path_from_temp('20010203_010203.mp4')))
+        except (picsort.InvalidTimeFormatError, picsort.NotAFileError):
+            pass
 
     def test_source_is_not_a_directory(self):
         """Fails if the program doesn't exit when source isn't a directory."""
@@ -213,15 +153,10 @@ class TestFileOrganizing(unittest.TestCase):
         )
         self.create_files = partial(create_files, *files)
 
-    def tearDown(self):
-        """Deletes temporary files that were used for running tests."""
-        # if shutil.rmtree.avoids_symlink_attacks:
-        #     shutil.rmtree(TEMP_PATH)
-
     def test_organize_files(self):
         """Fails if files aren't organized into folders properly."""
         self.create_files()
-        paths = picsort.organize_files(TEMP_PATH, picsort.get_files(TEMP_PATH, recursive=False))
+        paths = picsort.organize_files(TEMP_PATH, False, picsort.get_files(TEMP_PATH))
         expected = (
             '2001/February 2001/20010203_010203.jpg',
             '2001/February 2001/20010204_010203.jpg'
@@ -233,7 +168,7 @@ class TestFileOrganizing(unittest.TestCase):
     def test_organize_recursive(self):
         """Fails if files within subdirectories aren't organized into folder properly."""
         self.create_files()
-        paths = picsort.organize_files(TEMP_PATH, picsort.get_files(TEMP_PATH, recursive=True))
+        paths = picsort.organize_files(TEMP_PATH, False, picsort.get_files_recursively(TEMP_PATH))
         expected = (
             '2001/February 2001/20010203_010203.jpg',
             '2001/February 2001/20010204_010203.jpg',
