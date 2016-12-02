@@ -39,17 +39,24 @@ class TestArgumentParsing(unittest.TestCase):
 
     def test_default_destination_is_source(self):
         """Fails if the destination doesn't match the source by default."""
-        result = picsort.parse_user_input(['source'])
+        result = picsort.parse_user_input(['sort', 'source'])
         self.assertEqual(result.source, result.destination)
 
     def test_destination_is_supplied(self):
         """Fails if the destination defaults to source, even though another was provided."""
-        result = picsort.parse_user_input(['source', 'destination'])
+        result = picsort.parse_user_input(['sort', 'source', 'destination'])
         self.assertEqual(result.destination, 'destination')
+
+    def test_user_entered_extensions(self):
+        """Fails if picsort.TimeFileUtilities.allowed_extensions doesn't match the input."""
+        args = 'sort source -e MP3 TXT'.split(' ')
+        picsort.TimeFileUtilities.allowed_extensions = picsort.parse_user_input(args).extensions
+        self.assertEqual(picsort.TimeFileUtilities.get_allowed_extensions(), ['.mp3', '.txt'])
+        picsort.TimeFileUtilities.reset_allowed_extensions()
 
 
 class TestStringSplitting(unittest.TestCase):
-    """Tests for the picsort.split_string function."""
+    """Tests for the picsort.TimeFileUtilities.split_name methodb."""
 
     def test_split_string_valid(self):
         """Fails if the string isn't split in the expected manner."""
@@ -101,7 +108,7 @@ class TestFileSearching(unittest.TestCase):
     def setUpClass(cls):
         """Creates files to search through."""
         files = (
-            'directory/',
+            'directory/20010203_010204.jpg',
             'txt_1.txt',
             'jpg_1.jpg',
             '200102_03010203.jpg',
@@ -117,12 +124,9 @@ class TestFileSearching(unittest.TestCase):
             shutil.rmtree(TEMP_PATH)
 
     def test_find_proper_file(self):
-        """Fails if a list containing only '20010203_010203.mp4' isn't returned."""
-        try:
-            self.assertEqual(picsort.get_files(TEMP_PATH),
-                             (path_from_temp('20010203_010203.mp4')))
-        except (picsort.InvalidTimeFormatError, picsort.NotAFileError):
-            pass
+        """Fails if a list containing a picsort.TimeFile with path '20010203_010203.mp4' isn't returned."""
+        self.assertEqual(picsort.get_files(TEMP_PATH)[0].path,
+                         (path_from_temp('20010203_010203.mp4')))
 
     def test_source_is_not_a_directory(self):
         """Fails if the program doesn't exit when source isn't a directory."""
@@ -130,7 +134,7 @@ class TestFileSearching(unittest.TestCase):
             with self.assertRaises(SystemExit) as e:
                 picsort.get_files(path_from_temp('txt_1.txt'))
 
-        expected_message = 'Error: Source must be a directory.\n'
+        expected_message = 'Error: Invalid/Nonexistent source.\n'
         self.assertEqual(stdout.getvalue(), expected_message)
         self.assertEqual(e.exception.code, 1)
 
@@ -140,9 +144,24 @@ class TestFileSearching(unittest.TestCase):
             with self.assertRaises(SystemExit) as e:
                 picsort.get_files(path_from_temp('imaginary_directory/'))
 
-        expected_message = "Error: Source doesn't exist.\n"
+        expected_message = 'Error: Invalid/Nonexistent source.\n'
         self.assertEqual(stdout.getvalue(), expected_message)
         self.assertEqual(e.exception.code, 1)
+
+    def test_print_files(self):
+        """Fails if the expected files aren't printed out."""
+        with redirect_stdout(StringIO()) as stdout:
+            picsort.list_files(TEMP_PATH, picsort.get_files)
+
+        self.assertEqual(stdout.getvalue(), '20010203_010203.mp4\n')
+
+    def test_print_files_recursively(self):
+        """Fails if the expected files aren't printed out."""
+        expected = '20010203_010203.mp4\ndirectory/20010203_010204.jpg\n'
+        with redirect_stdout(StringIO()) as stdout:
+            picsort.list_files(TEMP_PATH, picsort.get_files_recursively)
+
+        self.assertEqual(stdout.getvalue(), expected)
 
 
 class TestFileOrganizing(unittest.TestCase):

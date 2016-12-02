@@ -78,13 +78,16 @@ class TimeFileUtilities:
         return True
 
     @staticmethod
-    def get_allowed_extensions(extensions=allowed_extensions):
+    def get_allowed_extensions(extensions=None):
         """
         Adjusts user-entered extensions to make sure they're valid.
 
         :param extensions: An iterable of possibly faulty extensions.
         :return: A tuple of fixed, allowed extensions.
         """
+        if not extensions:
+            extensions = TimeFileUtilities.allowed_extensions
+
         new_extensions = []
         for extension in extensions:
             if not extension.startswith('.'):
@@ -93,6 +96,15 @@ class TimeFileUtilities:
                 new_extensions.append(extension.lower())
 
         return new_extensions
+
+    @staticmethod
+    def reset_allowed_extensions():
+        """
+        Resets allowed extensions to JPG and MP4.
+
+        :return: None.
+        """
+        TimeFileUtilities.allowed_extensions = ('.jpg', '.mp4')
 
 
 class TimeFile:
@@ -114,6 +126,7 @@ class TimeFile:
         self.path = path
         self.file_name = os.path.splitext(ntpath.basename(path))[0]
         self.extension = os.path.splitext(self.path)[1].lower()
+        self.file_name_with_extension = self.file_name + self.extension
 
         if self.extension not in TimeFileUtilities.get_allowed_extensions():
             raise InvalidExtensionError
@@ -126,17 +139,20 @@ class TimeFile:
 
         self.month_name = month_names[int(self.month) - 1]
 
-    def get_sorted_file_path(self, destination):
+    def get_sorted_file_path(self, destination, absolute=True):
         """
         Forms a new path to sort the file using
         the year and the month name.
 
         :param destination: Destination directory where to sort the files in.
+        :param absolute: Whether the return path should be absolute or relative to the destination.
         :return: A string which represents the new file path.
         """
         year_and_month = '{0} {1}'.format(self.month_name, self.year)
-        return os.path.join(destination, self.year, year_and_month,
-                            self.file_name + self.extension)
+        if absolute:
+            return os.path.join(destination, self.year, year_and_month, self.file_name_with_extension)
+        else:
+            return os.path.join(self.year, year_and_month, self.file_name_with_extension)
 
     def __str__(self):
         return self.path
@@ -166,7 +182,7 @@ def get_files_recursively(source):
     for file in all_file_paths:
         try:
             result.append(TimeFile(file))
-        except (InvalidExtensionError, NotAFileError):
+        except (InvalidExtensionError, InvalidTimeFormatError, NotAFileError):
             continue
 
     return tuple(result)
@@ -182,18 +198,14 @@ def get_files(source):
     """
     result = []
 
-    if not os.path.exists(source):
-        print("Error: Source doesn't exist.")
-        exit(1)
-
-    if not os.path.isdir(source):
-        print('Error: Source must be a directory.')
+    if not os.path.exists(source) or not os.path.isdir(source):
+        print('Error: Invalid/Nonexistent source.')
         exit(1)
 
     for file in os.listdir(source):
         try:
             result.append(TimeFile(os.path.join(source, file)))
-        except (InvalidExtensionError, NotAFileError):
+        except (InvalidExtensionError, InvalidTimeFormatError, NotAFileError):
             continue
 
     return tuple(result)
@@ -211,7 +223,7 @@ def organize_files(destination, copy, time_files):
     result = []
 
     for time_file in time_files:
-        new_path = time_file.get_sorted_file_path(destination)
+        new_path = time_file.get_sorted_file_path(destination, absolute=True)
         os.makedirs(os.path.dirname(new_path), exist_ok=True)
 
         if copy:
@@ -223,6 +235,18 @@ def organize_files(destination, copy, time_files):
     return tuple(result)
 
 
+def list_files(source, file_getter):
+    """
+    Prints out all of the valid files within source that would get sorted.
+
+    :param source: The source to search through for files.
+    :param file_getter: Function used to get TimeFile objects.
+    :return: None.
+    """
+    for time_file in file_getter(source):
+        print(os.path.relpath(time_file.path, source))
+
+
 def parse_user_input(args=argv[1:]):
     """
     Parses arguments provided by the user.
@@ -230,34 +254,69 @@ def parse_user_input(args=argv[1:]):
     :param args: Arguments to parse; defaults to command line arguments.
     :return: An argparse.Namespace object containing parsed arguments.
     """
-    source_help = 'Source directory to search.'
-    destination_help = 'Destination to move organized files in (default: equal to source.)'
-    help_help = 'Show this help message and exit.'  # Heh
-    recursive_help = 'Searches the whole source directory tree for files.'
-    extensions_help = 'List of extensions to allow sorting for (default: JPG, MP4.)'
-    copy_help = 'Copies files into destination instead of moving them.'
+    help_help = 'Show this help message and exit.'  # Heh.
 
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument('source', help=source_help)
-    parser.add_argument('destination', nargs='?', help=destination_help)
     parser.add_argument('-h', '--help', action='help', help=help_help)
-    parser.add_argument('-r', '--recursive', action='store_true', help=recursive_help)
-    parser.add_argument('-e', '--extensions', nargs='+', default=('.jpg', '.mp4'), help=extensions_help)
-    parser.add_argument('-c', '--copy', action='store_true', help=copy_help)
+    subparsers = parser.add_subparsers(dest='subparser')
 
-    result = parser.parse_args(args)
-    result.destination = result.source if not result.destination else result.destination
+    sp_sort_help = 'Sorts files that have a valid name format and a valid extension.'
+    sp_sort_source_help = 'Source directory to search.'
+    sp_sort_destination_help = 'Destination to move organized files in (default: equal to source.)'
+    sp_sort_recursive_help = 'Searches the whole source directory tree for files.'
+    sp_sort_copy_help = 'Copies files into destination instead of moving them.'
+    sp_sort_ext_help = 'List of extensions to allow sorting for (default: JPG, MP4.)'
 
-    return result
+    sp_sort = subparsers.add_parser('sort', add_help=False, help=sp_sort_help)
+    sp_sort.add_argument('-h', '--help', action='help')
+    sp_sort.add_argument('source', help=help_help)
+    sp_sort.add_argument('destination', nargs='?', help=sp_sort_destination_help)
+    sp_sort.add_argument('-r', '--recursive', action='store_true', help=sp_sort_recursive_help)
+    sp_sort.add_argument('-c', '--copy', action='store_true', help=sp_sort_copy_help)
+    sp_sort.add_argument('-e', '--extensions', nargs='+', default=('.jpg', '.mp4'), help=sp_sort_ext_help)
+
+    sp_list_help = 'Prints out the files that would be sorted within the provided source directory.'
+    sp_list_source_help = 'Directory to list valid files from.'
+    sp_list_recursive_help = 'Searches the whole source directory tree for files.'
+    sp_list_ext_help = 'List of extensions to look for (default: JPG, MP4.)'
+
+    sp_list = subparsers.add_parser('list', add_help=False, help=sp_list_help)
+    sp_list.add_argument('-h', '--help', action='help', help=help_help)
+    sp_list.add_argument('source', help=sp_list_source_help)
+    sp_list.add_argument('-r', '--recursive', action='store_true', help=sp_list_recursive_help)
+    sp_list.add_argument('-e', '--extensions', nargs='+', default=('.jpg', '.mp4'), help=sp_list_ext_help)
+
+    if len(args) == 0:
+        parser.print_usage()
+        exit(1)
+
+    settings = parser.parse_args(args)
+    if settings.subparser == 'sort':
+        settings.destination = settings.source if not settings.destination else settings.destination
+
+    TimeFileUtilities.allowed_extensions = settings.extensions
+
+    return settings
+
+
+def pick_an_action(settings):
+    """
+    Decides what the program should do depending on the selected subparser.
+
+    :param settings: An argparse.Namespace of parser user arguments.
+    :return: None.
+    """
+    file_getter = get_files_recursively if settings.recursive else get_files
+
+    if settings.subparser == 'list':
+        list_files(settings.source, file_getter)
+    elif settings.subparser == 'sort':
+        files = file_getter(settings.source)
+        organize_files(settings.destination, settings.copy, files)
 
 
 if __name__ == '__main__':
     settings = parse_user_input()
-    TimeFileUtilities.allowed_extensions = settings.extensions
 
-    if settings.recursive:
-        files = get_files_recursively(settings.source)
-    else:
-        files = get_files(settings.source)
-
-    organize_files(os.getcwd(), settings.copy, files)
+    pick_an_action(settings)
+    exit(0)
