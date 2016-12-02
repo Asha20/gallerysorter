@@ -59,7 +59,8 @@ class TestStringSplitting(unittest.TestCase):
 class TestFileChecking(unittest.TestCase):
     """Tests for file checking."""
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Creates files to search through."""
         files = (
             '20010203_102030.jpg',
@@ -70,7 +71,8 @@ class TestFileChecking(unittest.TestCase):
         )
         create_files(*files)
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         """Deletes temporary files that were used for running tests."""
         if shutil.rmtree.avoids_symlink_attacks:
             shutil.rmtree(TEMP_PATH)
@@ -95,7 +97,8 @@ class TestFileChecking(unittest.TestCase):
 class TestFileSearching(unittest.TestCase):
     """Tests for file searching."""
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Creates files to search through."""
         files = (
             'directory/',
@@ -107,7 +110,8 @@ class TestFileSearching(unittest.TestCase):
         )
         create_files(*files)
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         """Deletes temporary files that were used for running tests."""
         if shutil.rmtree.avoids_symlink_attacks:
             shutil.rmtree(TEMP_PATH)
@@ -144,14 +148,15 @@ class TestFileSearching(unittest.TestCase):
 class TestFileOrganizing(unittest.TestCase):
     """Tests for organizing files into folders."""
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Creates files to organize."""
         files = (
             '20010203_010203.jpg',
             '20010204_010203.jpg',
             'subdirectory/20020201_010203.jpg'
         )
-        self.create_files = partial(create_files, *files)
+        cls.create_files = partial(create_files, *files)
 
     def test_organize_files(self):
         """Fails if files aren't organized into folders properly."""
