@@ -56,7 +56,7 @@ class TestArgumentParsing(unittest.TestCase):
 
 
 class TestStringSplitting(unittest.TestCase):
-    """Tests for the picsort.TimeFileUtilities.split_name methodb."""
+    """Tests for the picsort.TimeFileUtilities.split_name method."""
 
     def test_split_string_valid(self):
         """Fails if the string isn't split in the expected manner."""
@@ -150,18 +150,17 @@ class TestFileSearching(unittest.TestCase):
 
     def test_print_files(self):
         """Fails if the expected files aren't printed out."""
-        with redirect_stdout(StringIO()) as stdout:
-            picsort.list_files(TEMP_PATH, picsort.get_files)
+        with redirect_stdout(StringIO()):
+            relative_paths = picsort.list_files(TEMP_PATH, picsort.get_files)
 
-        self.assertEqual(stdout.getvalue(), '20010203_010203.mp4\n')
+        self.assertEqual(relative_paths, ('20010203_010203.mp4',))
 
     def test_print_files_recursively(self):
         """Fails if the expected files aren't printed out."""
-        expected = '20010203_010203.mp4\ndirectory/20010203_010204.jpg\n'
-        with redirect_stdout(StringIO()) as stdout:
-            picsort.list_files(TEMP_PATH, picsort.get_files_recursively)
+        with redirect_stdout(StringIO()):
+            relative_paths = picsort.list_files(TEMP_PATH, picsort.get_files_recursively)
 
-        self.assertEqual(stdout.getvalue(), expected)
+        self.assertEqual(relative_paths, ('20010203_010203.mp4', 'directory/20010203_010204.jpg'))
 
 
 class TestFileOrganizing(unittest.TestCase):
@@ -180,7 +179,7 @@ class TestFileOrganizing(unittest.TestCase):
     def test_organize_files(self):
         """Fails if files aren't organized into folders properly."""
         self.create_files()
-        paths = picsort.organize_files(TEMP_PATH, False, picsort.get_files(TEMP_PATH))
+        paths = picsort.organize_files(TEMP_PATH, picsort.get_files(TEMP_PATH), copy=False)
         expected = (
             '2001/February 2001/20010203_010203.jpg',
             '2001/February 2001/20010204_010203.jpg'
@@ -192,7 +191,7 @@ class TestFileOrganizing(unittest.TestCase):
     def test_organize_recursive(self):
         """Fails if files within subdirectories aren't organized into folder properly."""
         self.create_files()
-        paths = picsort.organize_files(TEMP_PATH, False, picsort.get_files_recursively(TEMP_PATH))
+        paths = picsort.organize_files(TEMP_PATH, picsort.get_files_recursively(TEMP_PATH), copy=True)
         expected = (
             '2001/February 2001/20010203_010203.jpg',
             '2001/February 2001/20010204_010203.jpg',

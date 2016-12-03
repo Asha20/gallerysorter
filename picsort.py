@@ -181,7 +181,8 @@ def get_files_recursively(source):
 
     for file in all_file_paths:
         try:
-            result.append(TimeFile(file))
+            if not os.path.exists(file):
+                result.append(TimeFile(file))
         except (InvalidExtensionError, InvalidTimeFormatError, NotAFileError):
             continue
 
@@ -211,18 +212,23 @@ def get_files(source):
     return tuple(result)
 
 
-def organize_files(destination, copy, time_files):
+def organize_files(destination, time_files, copy=False, verbose=False):
     """
     Organizes files into folders.
 
     :param destination: The destination directory to sort files into.
-    :param copy: Copies files if True; Moves files if False.
     :param time_files: An iterable of picsort.TimeFile objects to sort.
+    :param copy: Copies files if True; Moves files if False.
+    :param verbose:
     :return: A tuple of new sorted file paths.
     """
     result = []
 
-    for time_file in time_files:
+    if verbose:
+        mode = 'Copying' if copy else 'Moving'
+        print('{mode} {number} files:'.format(mode=mode, number=len(time_files)))
+
+    for count, time_file in enumerate(time_files):
         new_path = time_file.get_sorted_file_path(destination, absolute=True)
         os.makedirs(os.path.dirname(new_path), exist_ok=True)
 
@@ -231,6 +237,16 @@ def organize_files(destination, copy, time_files):
         else:
             os.rename(time_file.path, new_path)
         result.append(new_path)
+
+        if verbose:
+            print(' {count}/{total} {file} -> {directory}'.format(
+                count=count+1,
+                total=len(time_files),
+                file=os.path.relpath(time_file.path, destination),
+                directory=os.path.relpath(new_path, destination)
+            ))
+
+    print('Done organizing!')
 
     return tuple(result)
 
@@ -241,10 +257,18 @@ def list_files(source, file_getter):
 
     :param source: The source to search through for files.
     :param file_getter: Function used to get TimeFile objects.
-    :return: None.
+    :return: A list containing all of the relative paths printed.
     """
-    for time_file in file_getter(source):
-        print(os.path.relpath(time_file.path, source))
+    relative_paths = []
+    time_files = file_getter(source)
+    print('Printing files:')
+    for time_file in time_files:
+        relative_path = os.path.relpath(time_file.path, source)
+        print(' -', relative_path)
+        relative_paths.append(relative_path)
+    print('Number of files:', len(time_files))
+
+    return tuple(relative_paths)
 
 
 def parse_user_input(args=argv[1:]):
@@ -265,14 +289,16 @@ def parse_user_input(args=argv[1:]):
     sp_sort_destination_help = 'Destination to move organized files in (default: equal to source.)'
     sp_sort_recursive_help = 'Searches the whole source directory tree for files.'
     sp_sort_copy_help = 'Copies files into destination instead of moving them.'
+    sp_sort_verbose_help = "Prints out the files as they're being organized."
     sp_sort_ext_help = 'List of extensions to allow sorting for (default: JPG, MP4.)'
 
     sp_sort = subparsers.add_parser('sort', add_help=False, help=sp_sort_help)
-    sp_sort.add_argument('-h', '--help', action='help')
-    sp_sort.add_argument('source', help=help_help)
+    sp_sort.add_argument('-h', '--help', action='help', help=help_help)
+    sp_sort.add_argument('source', help=sp_sort_source_help)
     sp_sort.add_argument('destination', nargs='?', help=sp_sort_destination_help)
     sp_sort.add_argument('-r', '--recursive', action='store_true', help=sp_sort_recursive_help)
     sp_sort.add_argument('-c', '--copy', action='store_true', help=sp_sort_copy_help)
+    sp_sort.add_argument('-v', '--verbose', action='store_true', help=sp_sort_verbose_help)
     sp_sort.add_argument('-e', '--extensions', nargs='+', default=('.jpg', '.mp4'), help=sp_sort_ext_help)
 
     sp_list_help = 'Prints out the files that would be sorted within the provided source directory.'
@@ -312,7 +338,7 @@ def pick_an_action(settings):
         list_files(settings.source, file_getter)
     elif settings.subparser == 'sort':
         files = file_getter(settings.source)
-        organize_files(settings.destination, settings.copy, files)
+        organize_files(settings.destination, files, copy=settings.copy, verbose=settings.verbose)
 
 
 if __name__ == '__main__':
