@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from sys import argv, exit
 from shutil import copyfile
 import ntpath
@@ -181,8 +183,7 @@ def get_files_recursively(source):
 
     for file in all_file_paths:
         try:
-            if not os.path.exists(file):
-                result.append(TimeFile(file))
+            result.append(TimeFile(file))
         except (InvalidExtensionError, InvalidTimeFormatError, NotAFileError):
             continue
 
@@ -224,6 +225,10 @@ def organize_files(destination, time_files, copy=False, verbose=False):
     """
     result = []
 
+    # Removes files whose source matches the destination.
+    time_files = tuple(time_file for time_file in time_files if
+                       time_file.path != time_file.get_sorted_file_path(destination))
+
     if verbose:
         mode = 'Copying' if copy else 'Moving'
         print('{mode} {number} files:'.format(mode=mode, number=len(time_files)))
@@ -236,6 +241,7 @@ def organize_files(destination, time_files, copy=False, verbose=False):
             copyfile(time_file.path, new_path)
         else:
             os.rename(time_file.path, new_path)
+
         result.append(new_path)
 
         if verbose:
@@ -262,10 +268,12 @@ def list_files(source, file_getter):
     relative_paths = []
     time_files = file_getter(source)
     print('Printing files:')
+
     for time_file in time_files:
         relative_path = os.path.relpath(time_file.path, source)
         print(' -', relative_path)
         relative_paths.append(relative_path)
+
     print('Number of files:', len(time_files))
 
     return tuple(relative_paths)

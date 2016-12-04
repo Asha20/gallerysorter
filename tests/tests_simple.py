@@ -179,27 +179,30 @@ class TestFileOrganizing(unittest.TestCase):
     def test_organize_files(self):
         """Fails if files aren't organized into folders properly."""
         self.create_files()
-        paths = picsort.organize_files(TEMP_PATH, picsort.get_files(TEMP_PATH), copy=False)
+        with redirect_stdout(StringIO()):
+            paths = picsort.organize_files(TEMP_PATH, picsort.get_files(TEMP_PATH), copy=False)
         expected = (
             '2001/February 2001/20010203_010203.jpg',
             '2001/February 2001/20010204_010203.jpg'
         )
 
-        self.assertEqual(paths, tuple(os.path.join(TEMP_PATH, item) for item in expected))
         self.addCleanup(shutil.rmtree, TEMP_PATH)
+        self.assertEqual(paths, tuple(os.path.join(TEMP_PATH, item) for item in expected))
 
-    def test_organize_recursive(self):
+    def test_organize_recursively(self):
         """Fails if files within subdirectories aren't organized into folder properly."""
         self.create_files()
-        paths = picsort.organize_files(TEMP_PATH, picsort.get_files_recursively(TEMP_PATH), copy=True)
+        with redirect_stdout(StringIO()):
+            paths = picsort.organize_files(TEMP_PATH, picsort.get_files_recursively(TEMP_PATH), copy=False)
+
         expected = (
             '2001/February 2001/20010203_010203.jpg',
             '2001/February 2001/20010204_010203.jpg',
             '2002/February 2002/20020201_010203.jpg'
         )
 
-        self.assertEqual(paths, tuple(os.path.join(TEMP_PATH, item) for item in expected))
         self.addCleanup(shutil.rmtree, TEMP_PATH)
+        self.assertEqual(paths, tuple(os.path.join(TEMP_PATH, item) for item in expected))
 
 
 if __name__ == '__main__':
