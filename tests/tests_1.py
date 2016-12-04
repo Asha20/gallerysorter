@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from functools import partial
 from contextlib import redirect_stdout
 from io import StringIO
