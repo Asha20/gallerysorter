@@ -53,7 +53,14 @@ Files that match these characteristics will from here be referred to as **timefi
 
 1. Clone the repository
 2. Enter the directory using `cd gallerysorter`
-3. Run the program: `python3 gallerysorter.py`
+3. Run the program: `python gallerysorter.py`
+
+
+## Compatibility and dependencies
+
+This program was written using Python 3.5 and should be compatible with 3.6 as well. Do not run it on 2.x versions of Python, as it will result in unexpected behavior. Backwards compabitility with Python 2.7 might be implemented at a later date.
+
+*gallerysorter* requires no third party modules.
 
 
 ## Tests
@@ -97,5 +104,5 @@ destination | The base directory to organize the files in (Default: same as *sou
 
 ## License
 
-See `LICENSE.md`
+See`LICENSE.md`
 
