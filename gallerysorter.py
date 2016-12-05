@@ -7,22 +7,65 @@ import os
 import argparse
 
 
-class NotAFileError(Exception):
-    """Raised when a file is expected but a directory is supplied."""
+# class NotAFileError(Exception):
+#     """Raised when a file is expected but a directory is supplied."""
+#
+#
+# class InvalidExtensionError(Exception):
+#     """Raised when a file doesn't have an expected extension."""
+#
+#
+# class InvalidTimeFormatError(Exception):
+#     """Raised when a string doesn't follow the YMD_HMS format."""
 
 
-class InvalidExtensionError(Exception):
-    """Raised when a file doesn't have an expected extension."""
+class TimeFile:
+    """For easier managing of files using the time format."""
 
+    _allowed_extensions = ('.jpg', '.mp4')
 
-class InvalidTimeFormatError(Exception):
-    """Raised when a string doesn't follow the YMD_HMS format."""
+    def __init__(self, path):
+        """
+        Defines all the parts that the YMD_HMS format defines,
+        along with the current and sorted path.
 
+        :param path: Path to a file for creating the TimeFile.
+        """
 
-class TimeFileUtilities:
-    """Namespace class for storing utility TimeFile methods."""
+        month_names = ('January', 'February', 'March', 'April', 'May', 'June', 'July',
+                       'August', 'September', 'October', 'November', 'December')
 
-    allowed_extensions = ('.jpg', '.mp4')
+        self.path = path
+        self.file_name = os.path.splitext(ntpath.basename(path))[0]
+        self.extension = os.path.splitext(self.path)[1].lower()
+        self.file_name_with_extension = self.file_name + self.extension
+
+        self.year, self.month, self.day, _, \
+            self.hour, self.minute, self.second = TimeFile.split_name(self.file_name)
+
+        self.month_name = month_names[int(self.month) - 1]
+
+    @classmethod
+    def try_create_time_file(cls, path):
+        """
+        aa
+
+        :param path:
+        :return:
+        """
+        file_name = os.path.splitext(ntpath.basename(path))[0]
+        file_extension = os.path.splitext(path)[1].lower()
+
+        if os.path.isdir(path):
+            return
+
+        if not cls.is_time_string(file_name):
+            return
+
+        if file_extension not in cls._allowed_extensions:
+            return
+
+        return TimeFile(path)
 
     @staticmethod
     def split_name(file_name):
@@ -66,30 +109,16 @@ class TimeFileUtilities:
         :param file_name: Path to test if it is a valid time string.
         :return: True if path is a valid time string; False otherwise.
         """
-        if len(file_name) != 15:
-            return False
-
-        parts = TimeFileUtilities.split_name(file_name)
-        try:
-            parts.remove('_')
-            for part in parts:
-                _ = int(part)
-        except ValueError:
-            return False
-
-        return True
+        return len(file_name) == 15 and file_name[8] == '_' and file_name.replace('_', '').isdigit()
 
     @staticmethod
-    def get_allowed_extensions(extensions=None):
+    def set_allowed_extensions(extensions=('.jpg', '.mp4')):
         """
         Adjusts user-entered extensions to make sure they're valid.
 
         :param extensions: An iterable of possibly faulty extensions.
         :return: A tuple of fixed, allowed extensions.
         """
-        if not extensions:
-            extensions = TimeFileUtilities.allowed_extensions
-
         new_extensions = []
         for extension in extensions:
             if not extension.startswith('.'):
@@ -97,49 +126,7 @@ class TimeFileUtilities:
             else:
                 new_extensions.append(extension.lower())
 
-        return new_extensions
-
-    @staticmethod
-    def reset_allowed_extensions():
-        """
-        Resets allowed extensions to JPG and MP4.
-
-        :return: None.
-        """
-        TimeFileUtilities.allowed_extensions = ('.jpg', '.mp4')
-
-
-class TimeFile:
-    """For easier managing of files using the time format."""
-
-    def __init__(self, path):
-        """
-        Defines all the parts that the YMD_HMS format defines,
-        along with the current and sorted path.
-
-        :param path: Path to a file for creating the TimeFile.
-        """
-        if os.path.isdir(path):
-            raise NotAFileError
-
-        month_names = ('January', 'February', 'March', 'April', 'May', 'June', 'July',
-                       'August', 'September', 'October', 'November', 'December')
-
-        self.path = path
-        self.file_name = os.path.splitext(ntpath.basename(path))[0]
-        self.extension = os.path.splitext(self.path)[1].lower()
-        self.file_name_with_extension = self.file_name + self.extension
-
-        if self.extension not in TimeFileUtilities.get_allowed_extensions():
-            raise InvalidExtensionError
-
-        if not TimeFileUtilities.is_time_string(self.file_name):
-            raise InvalidTimeFormatError
-
-        self.year, self.month, self.day, _, \
-            self.hour, self.minute, self.second = TimeFileUtilities.split_name(self.file_name)
-
-        self.month_name = month_names[int(self.month) - 1]
+        TimeFile._allowed_extensions = new_extensions
 
     def get_sorted_file_path(self, destination, absolute=True):
         """
@@ -170,22 +157,13 @@ def get_files_recursively(source):
     """
     result = []
 
-    if not os.path.exists(source):
-        print("Error: Source doesn't exist.")
-        exit(1)
-
-    if not os.path.isdir(source):
-        print('Error: Source must be a directory.')
-        exit(1)
-
     all_file_paths = (os.path.join(root, file) for root, dirs, files in os.walk(source)
                       for file in files)
 
     for file in all_file_paths:
-        try:
-            result.append(TimeFile(file))
-        except (InvalidExtensionError, InvalidTimeFormatError, NotAFileError):
-            continue
+        time_file = TimeFile.try_create_time_file(file)
+        if time_file:
+            result.append(time_file)
 
     return tuple(result)
 
@@ -200,15 +178,10 @@ def get_files(source):
     """
     result = []
 
-    if not os.path.exists(source) or not os.path.isdir(source):
-        print('Error: Invalid/Nonexistent source.')
-        exit(1)
-
     for file in os.listdir(source):
-        try:
-            result.append(TimeFile(os.path.join(source, file)))
-        except (InvalidExtensionError, InvalidTimeFormatError, NotAFileError):
-            continue
+        time_file = TimeFile.try_create_time_file(os.path.join(source, file))
+        if time_file:
+            result.append(time_file)
 
     return tuple(result)
 
@@ -328,7 +301,11 @@ def parse_user_input(args=argv[1:]):
     if settings.subparser == 'sort':
         settings.destination = settings.source if not settings.destination else settings.destination
 
-    TimeFileUtilities.allowed_extensions = settings.extensions
+    if not os.path.isdir(settings.source)or not os.path.exists(settings.source):
+        print('Error: Invalid/Nonexistent source.')
+        exit(1)
+
+    TimeFile.set_allowed_extensions(settings.extensions)
 
     return settings
 

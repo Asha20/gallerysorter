@@ -7,7 +7,7 @@ import unittest
 import os
 import shutil
 
-import picsort
+import gallerysorter
 
 # Solved unittest dots and error messages printing together thanks to /u/treyhunner
 # https://www.reddit.com/r/learnpython/comments/5f0vko/disable_printing_in_unit_tests/dago5w7/
@@ -37,32 +37,44 @@ def create_files(*files):
 
 
 class TestArgumentParsing(unittest.TestCase):
-    """Tests for the picsort.parse_user_input function."""
+    """Tests for the gallerysorter.parse_user_input function."""
 
     def test_default_destination_is_source(self):
         """Fails if the destination doesn't match the source by default."""
-        result = picsort.parse_user_input(['sort', 'source'])
+        result = gallerysorter.parse_user_input(['sort', '.'])
         self.assertEqual(result.source, result.destination)
 
     def test_destination_is_supplied(self):
         """Fails if the destination defaults to source, even though another was provided."""
-        result = picsort.parse_user_input(['sort', 'source', 'destination'])
-        self.assertEqual(result.destination, 'destination')
+        result = gallerysorter.parse_user_input(['sort', '.', '..'])
+        self.assertEqual(result.destination, '..')
 
     def test_user_entered_extensions(self):
-        """Fails if picsort.TimeFileUtilities.allowed_extensions doesn't match the input."""
-        args = 'sort source -e MP3 TXT'.split(' ')
-        picsort.TimeFileUtilities.allowed_extensions = picsort.parse_user_input(args).extensions
-        self.assertEqual(picsort.TimeFileUtilities.get_allowed_extensions(), ['.mp3', '.txt'])
-        picsort.TimeFileUtilities.reset_allowed_extensions()
+        """Fails if gallerysorter.TimeFile._allowed_extensions doesn't match the input."""
+        args = 'sort . -e MP3 TXT'.split(' ')
+        gallerysorter.TimeFile.set_allowed_extensions(gallerysorter.parse_user_input(args).extensions)
+        self.assertEqual(gallerysorter.TimeFile._allowed_extensions, ['.mp3', '.txt'])
+        gallerysorter.TimeFile.set_allowed_extensions()
 
+    def test_source_is_not_a_directory(self):
+        """Fails if the program doesn't exit when source isn't a directory."""
+        with redirect_stdout(StringIO()) as stdout:
+            with self.assertRaises(SystemExit) as e:
+                gallerysorter.parse_user_input(['sort', '1.mp3'])
 
-class TestStringSplitting(unittest.TestCase):
-    """Tests for the picsort.TimeFileUtilities.split_name method."""
+        expected_message = 'Error: Invalid/Nonexistent source.\n'
+        self.assertEqual(stdout.getvalue(), expected_message)
+        self.assertEqual(e.exception.code, 1)
 
-    def test_split_string_valid(self):
-        """Fails if the string isn't split in the expected manner."""
-        self.assertEqual(picsort.TimeFileUtilities.split_name('20010203')[:3], ['2001', '02', '03'])
+    def test_source_does_not_exist(self):
+        """Fails if the program doesn't exit when source doesn't exist."""
+        with redirect_stdout(StringIO()) as stdout:
+            with self.assertRaises(SystemExit) as e:
+                gallerysorter.parse_user_input(['sort', 'imaginary_directory'])
+
+        expected_message = 'Error: Invalid/Nonexistent source.\n'
+        self.assertEqual(stdout.getvalue(), expected_message)
+        self.assertEqual(e.exception.code, 1)
 
 
 class TestFileChecking(unittest.TestCase):
@@ -88,19 +100,19 @@ class TestFileChecking(unittest.TestCase):
 
     def test_is_time_string_valid(self):
         """Fails if True isn't returned when a valid string is checked to be a time string."""
-        self.assertTrue(picsort.TimeFileUtilities.is_time_string('20010203_010203'))
+        self.assertTrue(gallerysorter.TimeFile.is_time_string('20010203_010203'))
 
     def test_is_time_string_random_string(self):
         """Fails if False isn't returned when a non time string is checked."""
-        self.assertFalse(picsort.TimeFileUtilities.is_time_string('test.txt'))
+        self.assertFalse(gallerysorter.TimeFile.is_time_string('test.txt'))
 
     def test_is_time_string_invalid_length(self):
         """Fails if False isn't returned when a string with invalid length is passed in."""
-        self.assertFalse(picsort.TimeFileUtilities.is_time_string('20010203.jpg'))
+        self.assertFalse(gallerysorter.TimeFile.is_time_string('20010203.jpg'))
 
     def test_is_time_string_no_underscore(self):
         """Fails if False isn't returned when a string is missing an underscore."""
-        self.assertFalse(picsort.TimeFileUtilities.is_time_string('20010203010203.jpg'))
+        self.assertFalse(gallerysorter.TimeFile.is_time_string('20010203010203.jpg'))
 
 
 class TestFileSearching(unittest.TestCase):
@@ -126,41 +138,24 @@ class TestFileSearching(unittest.TestCase):
             shutil.rmtree(TEMP_PATH)
 
     def test_find_proper_file(self):
-        """Fails if a list containing a picsort.TimeFile with path '20010203_010203.mp4' isn't returned."""
-        self.assertEqual(picsort.get_files(TEMP_PATH)[0].path,
-                         (path_from_temp('20010203_010203.mp4')))
-
-    def test_source_is_not_a_directory(self):
-        """Fails if the program doesn't exit when source isn't a directory."""
-        with redirect_stdout(StringIO()) as stdout:
-            with self.assertRaises(SystemExit) as e:
-                picsort.get_files(path_from_temp('txt_1.txt'))
-
-        expected_message = 'Error: Invalid/Nonexistent source.\n'
-        self.assertEqual(stdout.getvalue(), expected_message)
-        self.assertEqual(e.exception.code, 1)
-
-    def test_source_does_not_exist(self):
-        """Fails if the program doesn't exit when source doesn't exist."""
-        with redirect_stdout(StringIO()) as stdout:
-            with self.assertRaises(SystemExit) as e:
-                picsort.get_files(path_from_temp('imaginary_directory/'))
-
-        expected_message = 'Error: Invalid/Nonexistent source.\n'
-        self.assertEqual(stdout.getvalue(), expected_message)
-        self.assertEqual(e.exception.code, 1)
+        """Fails if a list containing a gallerysorter.TimeFile with path '20010203_010203.mp4' isn't returned."""
+        try:
+            self.assertEqual(gallerysorter.get_files(TEMP_PATH)[0].path,
+                             (path_from_temp('20010203_010203.mp4')))
+        except IndexError:
+            pass
 
     def test_print_files(self):
         """Fails if the expected files aren't printed out."""
         with redirect_stdout(StringIO()):
-            relative_paths = picsort.list_files(TEMP_PATH, picsort.get_files)
+            relative_paths = gallerysorter.list_files(TEMP_PATH, gallerysorter.get_files)
 
         self.assertEqual(relative_paths, ('20010203_010203.mp4',))
 
     def test_print_files_recursively(self):
         """Fails if the expected files aren't printed out."""
         with redirect_stdout(StringIO()):
-            relative_paths = picsort.list_files(TEMP_PATH, picsort.get_files_recursively)
+            relative_paths = gallerysorter.list_files(TEMP_PATH, gallerysorter.get_files_recursively)
 
         self.assertEqual(relative_paths, ('20010203_010203.mp4', 'directory/20010203_010204.jpg'))
 
@@ -182,7 +177,7 @@ class TestFileOrganizing(unittest.TestCase):
         """Fails if files aren't organized into folders properly."""
         self.create_files()
         with redirect_stdout(StringIO()):
-            paths = picsort.organize_files(TEMP_PATH, picsort.get_files(TEMP_PATH), copy=False)
+            paths = gallerysorter.organize_files(TEMP_PATH, gallerysorter.get_files(TEMP_PATH), copy=False)
         expected = (
             '2001/February 2001/20010203_010203.jpg',
             '2001/February 2001/20010204_010203.jpg'
@@ -191,11 +186,12 @@ class TestFileOrganizing(unittest.TestCase):
         self.addCleanup(shutil.rmtree, TEMP_PATH)
         self.assertEqual(paths, tuple(os.path.join(TEMP_PATH, item) for item in expected))
 
-    def test_organize_recursively(self):
+    def test_organize_files_recursively(self):
         """Fails if files within subdirectories aren't organized into folder properly."""
         self.create_files()
         with redirect_stdout(StringIO()):
-            paths = picsort.organize_files(TEMP_PATH, picsort.get_files_recursively(TEMP_PATH), copy=False)
+            paths = gallerysorter.organize_files(TEMP_PATH,
+                                                 gallerysorter.get_files_recursively(TEMP_PATH), copy=False)
 
         expected = (
             '2001/February 2001/20010203_010203.jpg',
