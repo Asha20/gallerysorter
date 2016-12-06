@@ -40,32 +40,19 @@ class TimeFile:
         self.extension = os.path.splitext(self.path)[1].lower()
         self.file_name_with_extension = self.file_name + self.extension
 
+        if os.path.isdir(path):
+            raise ValueError('Error: Path is a directory!')
+
+        if not TimeFile.is_time_string(self.file_name):
+            raise ValueError('Error: Not a time string!')
+
+        if self.extension not in TimeFile._allowed_extensions:
+            raise ValueError('Error: Invalid extension!')
+
         self.year, self.month, self.day, _, \
             self.hour, self.minute, self.second = TimeFile.split_name(self.file_name)
 
         self.month_name = month_names[int(self.month) - 1]
-
-    @classmethod
-    def try_create_time_file(cls, path):
-        """
-        aa
-
-        :param path:
-        :return:
-        """
-        file_name = os.path.splitext(ntpath.basename(path))[0]
-        file_extension = os.path.splitext(path)[1].lower()
-
-        if os.path.isdir(path):
-            return
-
-        if not cls.is_time_string(file_name):
-            return
-
-        if file_extension not in cls._allowed_extensions:
-            return
-
-        return TimeFile(path)
 
     @staticmethod
     def split_name(file_name):
@@ -161,9 +148,10 @@ def get_files_recursively(source):
                       for file in files)
 
     for file in all_file_paths:
-        time_file = TimeFile.try_create_time_file(file)
-        if time_file:
-            result.append(time_file)
+        try:
+            result.append(TimeFile(file))
+        except ValueError:
+            continue
 
     return tuple(result)
 
@@ -179,9 +167,10 @@ def get_files(source):
     result = []
 
     for file in os.listdir(source):
-        time_file = TimeFile.try_create_time_file(os.path.join(source, file))
-        if time_file:
-            result.append(time_file)
+        try:
+            result.append(TimeFile(os.path.join(source, file)))
+        except ValueError:
+            continue
 
     return tuple(result)
 
