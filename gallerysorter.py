@@ -7,18 +7,6 @@ import os
 import argparse
 
 
-# class NotAFileError(Exception):
-#     """Raised when a file is expected but a directory is supplied."""
-#
-#
-# class InvalidExtensionError(Exception):
-#     """Raised when a file doesn't have an expected extension."""
-#
-#
-# class InvalidTimeFormatError(Exception):
-#     """Raised when a string doesn't follow the YMD_HMS format."""
-
-
 class TimeFile:
     """For easier managing of files using the time format."""
 
