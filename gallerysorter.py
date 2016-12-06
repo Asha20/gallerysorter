@@ -140,7 +140,7 @@ def get_files_recursively(source):
     and that have one of the selected extensions.
 
     :param source: The directory to search for files in.
-    :return: A tuple of picsort.TimeFile objects.
+    :return: A tuple of gallerysorter.TimeFile objects.
     """
     result = []
 
@@ -162,7 +162,7 @@ def get_files(source):
     and that have one of the selected extensions.
 
     :param source: The directory to search for files in.
-    :return: A tuple of picsort.TimeFile objects.
+    :return: A tuple of gallerysorter.TimeFile objects.
     """
     result = []
 
@@ -180,7 +180,7 @@ def organize_files(destination, time_files, copy=False, verbose=False):
     Organizes files into folders.
 
     :param destination: The destination directory to sort files into.
-    :param time_files: An iterable of picsort.TimeFile objects to sort.
+    :param time_files: An iterable of gallerysorter.TimeFile objects to sort.
     :param copy: Copies files if True; Moves files if False.
     :param verbose:
     :return: A tuple of new sorted file paths.
